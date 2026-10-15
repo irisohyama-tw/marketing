@@ -144,7 +144,7 @@ function save(i,fields){
   clearTimeout(tmr[idx]);pending.add(idx);
   tmr[idx]=setTimeout(async()=>{
     const changes={};for(const k of keys)changes[k]=st[idx]?.[k];
-    const {data,error}=await sb.from("posts").update(changes).eq("id",idx+1).select("id");
+    const {data,error}=await sb.from("posts").update(changes).eq("id",idx).select("id");
     if(error||!data?.length){flash("儲存失敗："+errText(error||"資料不存在或權限不足"));await loadPosts()}
     else flash("已儲存到 Supabase");
     pending.delete(idx);
@@ -236,13 +236,13 @@ async function addFiles(i,files){
  for(const f of fs){
    if(f.size>5*1024*1024){flash("圖片超過 5 MB："+f.name);continue}
    const ext=(f.name.split(".").pop()||"png").toLowerCase().replace(/[^a-z0-9]/g,"")||"png";
-   const path=`posts/${Number(i)+1}/${crypto.randomUUID()}.${ext}`;
+   const path=`posts/${Number(i)}/${crypto.randomUUID()}.${ext}`;
    const {error}=await sb.storage.from(BUCKET).upload(path,f,{contentType:f.type,upsert:false});
    if(error){flash("上傳失敗："+errText(error));continue}
-   const {data:current,error:readErr}=await sb.from("posts").select("imgs").eq("id",Number(i)+1).single();
+   const {data:current,error:readErr}=await sb.from("posts").select("imgs").eq("id",Number(i)).single();
    if(readErr){flash("讀取圖片清單失敗："+errText(readErr));continue}
    const imgs=[...(Array.isArray(current.imgs)?current.imgs:[]),path];
-   const {data:updated,error:writeErr}=await sb.from("posts").update({imgs}).eq("id",Number(i)+1).select("id");
+   const {data:updated,error:writeErr}=await sb.from("posts").update({imgs}).eq("id",Number(i)).select("id");
    if(writeErr||!updated?.length){flash("圖片已上傳，但更新貼文失敗，請聯絡管理員");continue}
    st[i]=st[i]||{};st[i].imgs=imgs;paint();flash("圖片已上傳")
  }
@@ -255,10 +255,10 @@ document.addEventListener("click",async e=>{
  const b=e.target.closest("[data-del]");if(!b||!canW)return;
  const sep=b.dataset.del.indexOf("|");const i=Number(b.dataset.del.slice(0,sep)),path=b.dataset.del.slice(sep+1);
  if(!confirm("確定移除這張圖片嗎？"))return;
- const {data,error}=await sb.from("posts").select("imgs").eq("id",i+1).single();
+ const {data,error}=await sb.from("posts").select("imgs").eq("id",i).single();
  if(error){flash("讀取失敗："+errText(error));return}
  const imgs=(data.imgs||[]).filter(item=>imgPath(item)!==path);
- const result=await sb.from("posts").update({imgs}).eq("id",i+1).select("id");
+ const result=await sb.from("posts").update({imgs}).eq("id",i).select("id");
  if(result.error||!result.data?.length){flash("無法更新圖片清單");return}
  st[i]=st[i]||{};st[i].imgs=imgs;paint();
  const removed=await sb.storage.from(BUCKET).remove([path]);
@@ -267,9 +267,9 @@ document.addEventListener("click",async e=>{
 async function loadPosts(){
  const {data,error}=await sb.from("posts").select("id,w,a,p,copy,mat,imgs").order("id");
  if(error){ready=false;canW=false;setStatus("讀取失敗，請檢查 posts API 權限及 RLS");flash(errText(error));paint();return}
- st={};for(const r of data||[]){if(r.id>=1&&r.id<=13)st[r.id-1]=rowToState(r)}
+ st={};for(const r of data||[]){if(r.id>=0&&r.id<=12)st[r.id]=rowToState(r)}
  ready=true;paint();
- if(data.length!==13)flash(`目前讀取 ${data.length} 筆，預期 13 筆（ID 1–13）`)
+ if(data.length!==13)flash(`目前讀取 ${data.length} 筆，預期 13 筆（ID 0–12）`)
 }
 async function refreshAuth(){
  const {data:{user},error}=await sb.auth.getUser();sessionUser=error?null:user;
@@ -301,8 +301,8 @@ async function init(){
  });
  await loadPosts();await refreshAuth();
  channel=sb.channel("posts-live").on("postgres_changes",{event:"*",schema:"public",table:"posts"},payload=>{
-   const r=payload.new;if(!r?.id||r.id<1||r.id>13||pending.has(r.id-1))return;
-   st[r.id-1]=rowToState(r);paint();
+   const r=payload.new;if(!r||!Number.isInteger(r.id)||r.id<0||r.id>12||pending.has(r.id))return;
+   st[r.id]=rowToState(r);paint();
  }).subscribe(status=>{if(status==="CHANNEL_ERROR")flash("即時同步連線中斷，請重新整理")});
  if(recovery||invite)showReset();
 }
