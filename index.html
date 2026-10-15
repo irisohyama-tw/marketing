@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>綠綠茶 Meta 貼文時程與進度追蹤</title>
+<style>
+:root{
+  --bg:#f6f8f5;--surface:#ffffff;--ink:#1d2a22;--muted:#5d6b62;--line:#dde4dd;
+  --c1:#9cc9a6;--c2:#4f9a68;--c3:#e0a93b;--c4:#1d5b3a;--accent:#1d5b3a;--sel:#eaf3ec;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#14201a;--surface:#1b2a22;--ink:#e6efe8;--muted:#9fb0a5;--line:#2c3f34;
+  --c1:#3f7a54;--c2:#5fb07c;--c3:#d9a441;--c4:#8fd4a6;--accent:#8fd4a6;--sel:#22362a;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#14201a;--surface:#1b2a22;--ink:#e6efe8;--muted:#9fb0a5;--line:#2c3f34;
+  --c1:#3f7a54;--c2:#5fb07c;--c3:#d9a441;--c4:#8fd4a6;--accent:#8fd4a6;--sel:#22362a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:.02em}
+.sub{color:var(--muted);margin:0 0 16px}
+.top{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.prog{flex:1;min-width:240px}
+.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.stat{font-size:13px;color:var(--muted);margin-top:4px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:10px}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.inner{min-width:2300px}
+.cc{flex:0 0 290px;padding:8px;border-left:1px solid var(--line)}
+.cc textarea{min-height:96px}
+.hh{font-weight:600;padding:8px 12px}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);text-align:center;cursor:pointer}
+.drop:focus{outline:2px solid var(--accent);border-color:var(--accent);color:var(--ink)}
+.th{position:relative;display:inline-block}
+.x{position:absolute;top:-6px;right:-6px;padding:0 6px;border-radius:50%;line-height:18px}
+.row{display:flex;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.info{flex:0 0 280px;position:sticky;left:0;z-index:2;background:var(--surface);padding:10px 12px;border-right:1px solid var(--line)}
+.info b{display:block;font-weight:600}
+.meta{font-size:12px;color:var(--muted)}
+.chk{display:flex;gap:12px;margin-top:6px;font-size:12px}
+.chk label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.track{position:relative;flex:1;min-height:70px}
+.hdr .info{font-weight:600;padding:8px 12px}
+.hdr .track{min-height:36px}
+.m{position:absolute;top:0;bottom:0;border-left:1px solid var(--line);font-size:12px;color:var(--muted);padding:8px 6px}
+.row:not(.hdr) .m{padding:0;font-size:0}
+.seg{position:absolute;height:14px;border-radius:7px;background:var(--c)}
+.pub{position:absolute;width:16px;height:16px;transform:rotate(45deg);background:var(--c4);border-radius:3px}
+.lbl{position:absolute;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap}
+.row.done{background:var(--sel)}
+.row.done .info{background:var(--sel)}
+.row.next .info{box-shadow:inset 4px 0 0 var(--c3)}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border:1px solid var(--line);border-radius:9px;margin-left:6px;color:var(--muted)}
+.today{position:absolute;top:0;bottom:0;width:2px;background:#d4493c;z-index:1}
+.note{margin-top:16px;font-size:13px;color:var(--muted)}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+h2{font-size:18px;margin:28px 0 12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.card h3{margin:0 0 2px;font-size:16px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media (max-width:700px){.two{grid-template-columns:1fr}}
+.card label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+textarea{width:100%;min-height:120px;resize:vertical;font:inherit;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+textarea:disabled{opacity:.7}
+.imgs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.imgs img{height:90px;border-radius:6px;border:1px solid var(--line)}
+.cta a,.meta a{color:var(--accent)}
+#fl{position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);font-size:12px;padding:4px 10px;border-radius:12px;opacity:0;transition:opacity .2s;z-index:5}
+</style>
+</head>
+<body>
+<main>
+<h1>綠綠茶 Meta 貼文時程與進度追蹤</h1>
+<p class="sub">2026/12/15 – 2027/12/15，共 13 檔貼文。每檔以發文日回推製作時程，可直接勾選進度。</p>
+<div class="top">
+  <div class="prog"><div class="bar"><i id="pb"></i></div><div class="stat" id="st"></div></div>
+  <span class="stat" id="mode"></span>
+</div>
+<div class="legend">
+  <span style="--c:var(--c1)">企劃／文案撰寫（發文前 5 週 → 3 週）</span>
+  <span style="--c:var(--c2)">素材製作（4 週 → 1.5 週）</span>
+  <span style="--c:var(--c3)">內部／萬家福確認（10 → 3 天前）</span>
+  <span style="--c:var(--c4)">◆ 發文日</span>
+</div>
+<div class="wrap"><div class="inner" id="g"></div></div>
+<div id="cards"></div><div id="fl"></div>
+<p class="note">左側黃色標記為下一檔待處理貼文。紅線為今天。勾選與貼上的內容會即時同步給所有能開啟此頁的人，對方需有 Contributor 以上權限才能編輯。確認天數可依萬家福的審核時間自行調整。</p>
+</main>
+<script>
+const P=[
+["2026-12-15","新品上市","PLAZA","建立新品上市露出"],
+["2027-01-15","新品上市試飲會宣傳","門市","提升活動參與度"],
+["2027-02-15","試飲活動回顧／產品特色","門市","延續活動熱度"],
+["2027-03-15","日常飲用情境","PLAZA","建立日常飲用需求"],
+["2027-04-15","產品特色深入介紹","PLAZA","加深商品理解"],
+["2027-05-15","日常分享／飲用提案","PLAZA","增加互動與好感"],
+["2027-06-15","年中購物節／商品導購","門市","配合通路促銷"],
+["2027-07-15","夏日愛飲季活動","PLAZA","掌握夏季需求"],
+["2027-08-15","產品 Q&A／夏季特調資訊","PLAZA","提升商品認知"],
+["2027-09-15","中秋聚會／烤肉搭配","門市","結合節慶情境"],
+["2027-10-15","商品印象再強化","PLAZA","維持商品關注度"],
+["2027-11-15","雙 11 購物節／促購導流","門市","提高購買轉換"],
+["2027-12-15","年末商品推薦","門市","提高購買轉換"]];
+const D=864e5,S=Date.UTC(2026,10,10),E=Date.UTC(2027,11,31),T=E-S;
+const pct=t=>((t-S)/T*100);
+const ts=s=>{const [y,m,d]=s.split("-").map(Number);return Date.UTC(y,m-1,d)};
+let st={},db=null,assets=null,canW=true,tmr={};
+try{st=JSON.parse(localStorage.getItem("mt")||"{}")}catch(e){}
+function flash(m){const f=document.getElementById("fl");f.textContent=m;f.style.opacity=1;clearTimeout(flash.t);flash.t=setTimeout(()=>f.style.opacity=0,1500)}
+function save(i){
+  if(!db){try{localStorage.setItem("mt",JSON.stringify(st))}catch(e){}return}
+  clearTimeout(tmr[i]);tmr[i]=setTimeout(async()=>{
+    const r=db.doc("posts/p"+i),d={...st[i]};
+    try{await r.update(d)}catch(e){try{await r.set(d)}catch(e2){flash("儲存失敗，請確認你有編輯權限");return}}
+    flash("已儲存")},500)}
+const g=document.getElementById("g");
+function months(){let h="";for(let y=2026,m=10;;){const t=Date.UTC(y,m,1);if(t>E)break;
+  h+=`<div class="m" style="left:${Math.max(0,pct(t))}%">${y}/${m+1}</div>`;m++;if(m>11){m=0;y++}}return h}
+function mlines(){let h="";for(let y=2026,m=11;;){const t=Date.UTC(y,m,1);if(t>E)break;
+  h+=`<div class="m" style="left:${pct(t)}%"></div>`;m++;if(m>11){m=0;y++}}return h}
+const now=Date.now(),tl=now>=S&&now<=E?`<div class="today" style="left:${pct(now)}%"></div>`:"";
+let html=`<div class="row hdr"><div class="info">貼文</div><div class="track">${months()}${tl}</div><div class="cc hh">文案</div><div class="cc hh">素材</div></div>`;
+P.forEach((p,i)=>{
+  const d=ts(p[0]),seg=(a,b,c)=>`<div class="seg" style="left:${pct(d-a*D)}%;width:${(a-b)*D/T*100}%;top:${c}px;--c:var(--c${c==10?1:c==26?2:3})"></div>`;
+  html+=`<div class="row" id="r${i}"><div class="info"><b>${p[0].replace(/-/g,"/")} ${p[1]}<span class="tag">${p[2]}</span></b>
+  <div class="meta">${p[3]}</div>
+  <div class="chk">${[["w","文案確認"],["a","素材確認"],["p","已發文"]].map(([k,n])=>`<label><input type="checkbox" data-i="${i}" data-k="${k}">${n}</label>`).join("")}</div></div>
+  <div class="track">${mlines()}${tl}${seg(35,21,10)}${seg(28,11,26)}${seg(10,3,42)}
+  <div class="pub" style="left:calc(${pct(d)}% - 8px);top:10px"></div>
+  <div class="lbl" style="left:calc(${pct(d)}% + 14px);top:8px">${p[0].slice(5).replace("-","/")}</div></div><div class="cc"><textarea data-i="${i}" data-k="copy" placeholder="貼上這則貼文的文案…"></textarea></div><div class="cc"><div class="drop" tabindex="0" data-i="${i}">點一下此框，再按 Ctrl/⌘+V 貼上圖片；也可以直接拖曳圖片進來</div><div class="imgs"></div><button data-upb="${i}" class="upb">上傳素材圖片</button><input type="file" accept="image/*" multiple hidden data-up="${i}"></div></div>`});
+g.innerHTML=html;
+function paint(){paintCards();
+  let done=0,next=-1;
+  P.forEach((p,i)=>{const s=st[i]||{};
+    ["w","a","p"].forEach(k=>g.querySelector(`[data-i="${i}"][data-k="${k}"]`).checked=!!s[k]);
+    const r=document.getElementById("r"+i);r.classList.toggle("done",!!s.p);r.classList.remove("next");
+    if(s.p)done++;else if(next<0)next=i});
+  if(next>=0)document.getElementById("r"+next).classList.add("next");
+  let c=0;P.forEach((p,i)=>{const s=st[i]||{};c+=(s.w?1:0)+(s.a?1:0)+(s.p?1:0)});
+  document.getElementById("pb").style.width=(c/39*100)+"%";
+  document.getElementById("st").textContent=`已發文 ${done}/13　整體進度 ${Math.round(c/39*100)}%`+(next>=0?`　下一檔：${P[next][0].replace(/-/g,"/")} ${P[next][1]}`:"　全部完成");
+}
+g.addEventListener("change",e=>{const t=e.target;if(t.type!=="checkbox")return;
+  (st[t.dataset.i]=st[t.dataset.i]||{})[t.dataset.k]=t.checked;save(t.dataset.i);paint()});
+
+paint();
+const X=[
+["介紹新品綠綠茶、上市資訊（獨家販售規格）｜商品主視覺、包裝照、主打「日式茶飲首選」","IRIS OHAYAMA 綠綠茶品項介紹|https://www.irisohyamatw.com/pages/feature-tea-ryoku"],
+["公告試飲日期、地點、參與方式｜活動主視覺、活動資訊、門市照片","活動資訊頁／指定門市資訊"],
+["分享活動照片、消費者體驗與商品特色｜活動花絮、試飲照片、商品亮點","門市資訊"],
+["居家、辦公、休息時的飲用情境｜生活情境照、日常飲用文案","門市資訊"],
+["茶飲風味、規格、包裝資訊｜商品細節圖、特色 banner、常見問題","IRIS OHAYAMA 綠綠茶品項介紹|https://www.irisohyamatw.com/pages/feature-tea-ryoku"],
+["搭配茶飲的日常情境與餐食｜茶飲搭配、餐食情境、互動式文案","IRIS OHAYAMA 綠綠茶品項介紹|https://www.irisohyamatw.com/pages/feature-tea-ryoku"],
+["結合萬家福年中檔期優惠與商品推薦｜檔期主視覺、優惠資訊、商品圖","門市資訊"],
+["夏日、冰飲、清爽飲用情境｜冰飲情境照、夏季主視覺、清爽文案","愛飲季活動頁"],
+["商品規格、飲用與保存方式｜Q&A banner、商品資訊整理","門市資訊"],
+["家庭聚會、烤肉、餐食搭配｜中秋情境照、茶飲搭餐圖、節慶文案","門市資訊"],
+["回顧商品特色與日常飲用情境｜商品主視覺、特色整理 banner","門市資訊"],
+["雙 11 優惠與購買誘因｜檔期優惠圖、商品推薦圖、促購文案","門市資訊"],
+["年度商品亮點搭配冬季與年末情境｜年度回顧圖、商品特色整理、年末推薦文案","門市資訊"]];
+const cards=g;
+P.forEach((p,i)=>{document.querySelector("#r"+i+" .info").title="規劃方向："+X[i][0]+"｜CTA："+X[i][1].split("|")[0]});void P.map((p,i)=>{const [t,u]=X[i][1].split("|");
+ return `<section class="card" id="c${i}"><h3>${p[0].replace(/-/g,"/")} ${p[1]}</h3><div class="meta">規劃方向：${X[i][0]}</div>
+ <div class="two"><div><label>文案</label><textarea data-i="${i}" data-k="copy" placeholder="貼上這則貼文的文案…"></textarea></div>
+ <div><label>素材（雲端連結或說明）</label><textarea data-i="${i}" data-k="mat" placeholder="貼上素材連結、尺寸或說明…"></textarea>
+ <div class="imgs"></div><button data-upb="${i}" class="upb">上傳素材圖片</button><input type="file" accept="image/*" multiple hidden data-up="${i}"></div></div>
+ <div class="meta cta">CTA：${u?`<a href="${u}" target="_blank" rel="noopener">${t}</a>`:t}</div></section>`}).join("");
+function paintCards(){
+  P.forEach((p,i)=>{const s=st[i]||{},c=document.getElementById("r"+i);if(!c)return;
+    c.querySelectorAll("textarea").forEach(t=>{const v=s[t.dataset.k]||"";if(document.activeElement!==t&&t.value!==v)t.value=v;t.disabled=!canW});
+    c.querySelector(".imgs").innerHTML=(s.imgs||[]).map(id=>`<span class="th"><a href="/_blob/${id}" target="_blank"><img src="/_blob/${id}" alt="素材圖片"></a><button class="x" data-del="${i}|${id}" title="移除">×</button></span>`).join("");
+    c.querySelector(".upb").style.display=assets&&canW?"":"none";
+    const m=document.querySelector("#r"+i+" .meta");let x=m.querySelector(".ct");
+    if(!x){x=document.createElement("span");x.className="ct";m.appendChild(x)}
+    x.innerHTML=` ｜<a href="#c${i}">文案${s.copy?"✔":"○"} 素材${(s.imgs||[]).length?"✔":"○"}</a>`});
+  g.querySelectorAll("input[type=checkbox]").forEach(x=>x.disabled=!canW)}
+cards.addEventListener("input",e=>{const t=e.target;if(t.tagName!=="TEXTAREA")return;(st[t.dataset.i]=st[t.dataset.i]||{})[t.dataset.k]=t.value;save(t.dataset.i);paintCards()});
+cards.addEventListener("click",e=>{const b=e.target.closest("[data-upb]");if(b)cards.querySelector(`[data-up="${b.dataset.upb}"]`).click()});
+cards.addEventListener("change",async e=>{const f=e.target,i=f.dataset.up;if(i==null)return;
+  for(const file of f.files){try{const r=await assets.upload(file);const s=st[i]=st[i]||{};s.imgs=[...(s.imgs||[]),r.id]}catch(x){flash("上傳失敗")}}
+  f.value="";save(i);paintCards()});
+async function addFiles(i,files){
+  if(!assets||!canW){flash("目前無法上傳圖片");return}
+  const fs=[...files].filter(f=>f.type.startsWith("image/"));
+  if(!fs.length){flash("請放入圖片檔");return}
+  flash("上傳中…");const s=st[i]=st[i]||{};
+  for(const f of fs){try{const r=await assets.upload(f);s.imgs=[...(s.imgs||[]),r.id]}catch(x){flash("上傳失敗")}}
+  save(i);paintCards()}
+const dz=e=>e.target.closest&&e.target.closest(".drop");
+g.addEventListener("paste",e=>{const d=dz(e);if(!d)return;const fs=[...((e.clipboardData&&e.clipboardData.files)||[])];if(fs.length){e.preventDefault();addFiles(d.dataset.i,fs)}});
+g.addEventListener("dragover",e=>{if(dz(e))e.preventDefault()});
+g.addEventListener("drop",e=>{const d=dz(e);if(!d)return;e.preventDefault();addFiles(d.dataset.i,e.dataTransfer.files)});
+g.addEventListener("click",e=>{const x=e.target.closest("[data-del]");if(!x||!canW)return;const [i,id]=x.dataset.del.split("|");st[i].imgs=(st[i].imgs||[]).filter(v=>v!==id);save(i);paintCards()});
+(async()=>{const md=document.getElementById("mode");
+  try{if(window.claude){
+    const [d,u,a]=await Promise.all([claude.use("db"),claude.use("user"),claude.use("assets")]);
+    db=d;assets=a;if(u&&u.can("data.write")===false)canW=false;
+    if(db){st={};db.collection("posts").onSnapshot(sn=>{const n={};sn.docs.forEach(x=>{n[x.id.replace("p","")]={...x.data()}});st=n;paint()},()=>flash("同步中斷"))}}
+  }catch(e){}
+  md.textContent=db?(canW?"雙方即時同步中":"唯讀模式：你的權限無法編輯"):"本機模式：內容不會同步給對方";
+  paint()})();
+</script>
+</body>
+</html>
