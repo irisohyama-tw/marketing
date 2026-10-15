@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>綠綠茶 Meta 貼文時程與進度追蹤</title>
+<style>
+:root{
+  --bg:#f6f8f5;--surface:#ffffff;--ink:#1d2a22;--muted:#5d6b62;--line:#dde4dd;
+  --c1:#9cc9a6;--c2:#4f9a68;--c3:#e0a93b;--c4:#1d5b3a;--accent:#1d5b3a;--sel:#eaf3ec;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#14201a;--surface:#1b2a22;--ink:#e6efe8;--muted:#9fb0a5;--line:#2c3f34;
+  --c1:#3f7a54;--c2:#5fb07c;--c3:#d9a441;--c4:#8fd4a6;--accent:#8fd4a6;--sel:#22362a;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#14201a;--surface:#1b2a22;--ink:#e6efe8;--muted:#9fb0a5;--line:#2c3f34;
+  --c1:#3f7a54;--c2:#5fb07c;--c3:#d9a441;--c4:#8fd4a6;--accent:#8fd4a6;--sel:#22362a;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:.02em}
+.sub{color:var(--muted);margin:0 0 16px}
+.top{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.prog{flex:1;min-width:240px}
+.bar{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.stat{font-size:13px;color:var(--muted);margin-top:4px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:10px}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.inner{min-width:2300px}
+.cc{flex:0 0 290px;padding:8px;border-left:1px solid var(--line)}
+.cc textarea{min-height:96px}
+.hh{font-weight:600;padding:8px 12px}
+.drop{border:2px dashed var(--line);border-radius:8px;padding:10px;font-size:12px;color:var(--muted);text-align:center;cursor:pointer}
+.drop:focus{outline:2px solid var(--accent);border-color:var(--accent);color:var(--ink)}
+.th{position:relative;display:inline-block}
+.x{position:absolute;top:-6px;right:-6px;padding:0 6px;border-radius:50%;line-height:18px}
+.row{display:flex;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.info{flex:0 0 280px;position:sticky;left:0;z-index:2;background:var(--surface);padding:10px 12px;border-right:1px solid var(--line)}
+.info b{display:block;font-weight:600}
+.meta{font-size:12px;color:var(--muted)}
+.chk{display:flex;gap:12px;margin-top:6px;font-size:12px}
+.chk label{display:flex;align-items:center;gap:4px;cursor:pointer}
+.track{position:relative;flex:1;min-height:70px}
+.hdr .info{font-weight:600;padding:8px 12px}
+.hdr .track{min-height:36px}
+.m{position:absolute;top:0;bottom:0;border-left:1px solid var(--line);font-size:12px;color:var(--muted);padding:8px 6px}
+.row:not(.hdr) .m{padding:0;font-size:0}
+.seg{position:absolute;height:14px;border-radius:7px;background:var(--c)}
+.pub{position:absolute;width:16px;height:16px;transform:rotate(45deg);background:var(--c4);border-radius:3px}
+.lbl{position:absolute;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap}
+.row.done{background:var(--sel)}
+.row.done .info{background:var(--sel)}
+.row.next .info{box-shadow:inset 4px 0 0 var(--c3)}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border:1px solid var(--line);border-radius:9px;margin-left:6px;color:var(--muted)}
+.today{position:absolute;top:0;bottom:0;width:2px;background:#d4493c;z-index:1}
+.note{margin-top:16px;font-size:13px;color:var(--muted)}
+button{font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+h2{font-size:18px;margin:28px 0 12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.card h3{margin:0 0 2px;font-size:16px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media (max-width:700px){.two{grid-template-columns:1fr}}
+.card label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+textarea{width:100%;min-height:120px;resize:vertical;font:inherit;font-size:14px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+textarea:disabled{opacity:.7}
+.imgs{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.imgs img{height:90px;border-radius:6px;border:1px solid var(--line)}
+.cta a,.meta a{color:var(--accent)}
+#fl{position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);font-size:12px;padding:4px 10px;border-radius:12px;opacity:0;transition:opacity .2s;z-index:5}
+
+.authbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 16px}
+.authbar input,.authpanel input{font:inherit;padding:9px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);max-width:100%;width:240px}
+.authbar button,.authpanel button{padding:8px 12px}
+.authpanel{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:14px;margin:12px 0;max-width:600px}
+.authpanel form{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.authpanel label{display:block;width:100%;font-weight:600}
+.authpanel[hidden], [hidden]{display:none!important}
+.status{font-size:13px;color:var(--muted)}
+.drop.locked{cursor:not-allowed;opacity:.6}
+.x:disabled{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>綠綠茶 Meta 貼文時程與進度追蹤</h1>
+<p class="sub">2026/12/15 – 2027/12/15，共 13 檔貼文。每檔以發文日回推製作時程，可直接勾選進度。</p>
+<div class="authbar"><span id="authStatus" class="status" aria-live="polite">正在連接 Supabase…</span><button id="showLogin" hidden>編輯者登入</button><button id="logout" hidden>登出</button></div>
+<div id="loginPanel" class="authpanel" hidden><form id="loginForm"><label>編輯者登入（Email + 密碼）</label><input id="loginEmail" type="email" autocomplete="email" placeholder="Email" required><input id="loginPassword" type="password" autocomplete="current-password" placeholder="密碼" required><button type="submit">登入</button><button id="forgotPassword" type="button">忘記密碼／設定密碼</button><button id="closeLogin" type="button">取消</button></form><p class="status">只有已加入 editors 名單的使用者可以編輯。忘記密碼功能會寄送重設連結至 Email。</p></div>
+<div id="resetPanel" class="authpanel" hidden><form id="resetForm"><label>設定新密碼</label><input id="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="至少 8 個字元" required><input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="再次輸入新密碼" required><button type="submit">儲存新密碼</button></form><p class="status">請確認你是透過 Supabase 邀請信或密碼重設信開啟此頁面。</p></div>
+<div class="top">
+  <div class="prog"><div class="bar"><i id="pb"></i></div><div class="stat" id="st"></div></div>
+  <span class="stat" id="mode"></span>
+</div>
+<div class="legend">
+  <span style="--c:var(--c1)">企劃／文案撰寫（發文前 5 週 → 3 週）</span>
+  <span style="--c:var(--c2)">素材製作（4 週 → 1.5 週）</span>
+  <span style="--c:var(--c3)">內部／萬家福確認（10 → 3 天前）</span>
+  <span style="--c:var(--c4)">◆ 發文日</span>
+</div>
+<div class="wrap"><div class="inner" id="g"></div></div>
+<div id="cards"></div><div id="fl"></div>
+<p class="note">左側黃色標記為下一檔待處理貼文。紅線為今天。資料由 Supabase 儲存並同步。任何人可以觀看；只有已登入且列於 editors 名單的使用者可以編輯。確認天數可依萬家福的審核時間自行調整。</p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const P=[
+["2026-12-15","新品上市","PLAZA","建立新品上市露出"],
+["2027-01-15","新品上市試飲會宣傳","門市","提升活動參與度"],
+["2027-02-15","試飲活動回顧／產品特色","門市","延續活動熱度"],
+["2027-03-15","日常飲用情境","PLAZA","建立日常飲用需求"],
+["2027-04-15","產品特色深入介紹","PLAZA","加深商品理解"],
+["2027-05-15","日常分享／飲用提案","PLAZA","增加互動與好感"],
+["2027-06-15","年中購物節／商品導購","門市","配合通路促銷"],
+["2027-07-15","夏日愛飲季活動","PLAZA","掌握夏季需求"],
+["2027-08-15","產品 Q&A／夏季特調資訊","PLAZA","提升商品認知"],
+["2027-09-15","中秋聚會／烤肉搭配","門市","結合節慶情境"],
+["2027-10-15","商品印象再強化","PLAZA","維持商品關注度"],
+["2027-11-15","雙 11 購物節／促購導流","門市","提高購買轉換"],
+["2027-12-15","年末商品推薦","門市","提高購買轉換"]];
+const D=864e5,S=Date.UTC(2026,10,10),E=Date.UTC(2027,11,31),T=E-S;
+const pct=t=>((t-S)/T*100);
+const ts=s=>{const [y,m,d]=s.split("-").map(Number);return Date.UTC(y,m-1,d)};
+const SUPABASE_URL="https://gmyjwrmvirikbbkiahvb.supabase.co";
+const SUPABASE_KEY="sb_publishable_-WYXpTfx8jSz5XZgTE_e4Q_28jZgEuk";
+const BUCKET="post-images";
+let sb=null,st={},canW=false,tmr={},sessionUser=null,channel=null,ready=false;
+const pending=new Set();
+function flash(m){const f=document.getElementById("fl");f.textContent=m;f.style.opacity=1;clearTimeout(flash.t);flash.t=setTimeout(()=>f.style.opacity=0,3200)}
+function errText(e){return e?.message||String(e||"未知錯誤")}
+function setStatus(t){document.getElementById("authStatus").textContent=t}
+function imageUrl(path){return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}
+function imgPath(item){return typeof item==="string"?item:(item&&item.path)||""}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function rowToState(r){return {w:!!r.w,a:!!r.a,p:!!r.p,copy:r.copy||"",mat:r.mat||"",imgs:Array.isArray(r.imgs)?r.imgs:[]}}
+function save(i,fields){
+  if(!ready||!canW){flash("目前是唯讀模式，無法儲存");return}
+  const idx=Number(i);const keys=Object.keys(fields);
+  clearTimeout(tmr[idx]);pending.add(idx);
+  tmr[idx]=setTimeout(async()=>{
+    const changes={};for(const k of keys)changes[k]=st[idx]?.[k];
+    const {data,error}=await sb.from("posts").update(changes).eq("id",idx).select("id");
+    if(error||!data?.length){flash("儲存失敗："+errText(error||"資料不存在或權限不足"));await loadPosts()}
+    else flash("已儲存到 Supabase");
+    pending.delete(idx);
+  },550)
+}
+const g=document.getElementById("g");
+function months(){let h="";for(let y=2026,m=10;;){const t=Date.UTC(y,m,1);if(t>E)break;
+  h+=`<div class="m" style="left:${Math.max(0,pct(t))}%">${y}/${m+1}</div>`;m++;if(m>11){m=0;y++}}return h}
+function mlines(){let h="";for(let y=2026,m=11;;){const t=Date.UTC(y,m,1);if(t>E)break;
+  h+=`<div class="m" style="left:${pct(t)}%"></div>`;m++;if(m>11){m=0;y++}}return h}
+const now=Date.now(),tl=now>=S&&now<=E?`<div class="today" style="left:${pct(now)}%"></div>`:"";
+let html=`<div class="row hdr"><div class="info">貼文</div><div class="track">${months()}${tl}</div><div class="cc hh">文案</div><div class="cc hh">素材</div></div>`;
+P.forEach((p,i)=>{
+  const d=ts(p[0]),seg=(a,b,c)=>`<div class="seg" style="left:${pct(d-a*D)}%;width:${(a-b)*D/T*100}%;top:${c}px;--c:var(--c${c==10?1:c==26?2:3})"></div>`;
+  html+=`<div class="row" id="r${i}"><div class="info"><b>${p[0].replace(/-/g,"/")} ${p[1]}<span class="tag">${p[2]}</span></b>
+  <div class="meta">${p[3]}</div>
+  <div class="chk">${[["w","文案確認"],["a","素材確認"],["p","已發文"]].map(([k,n])=>`<label><input type="checkbox" data-i="${i}" data-k="${k}">${n}</label>`).join("")}</div></div>
+  <div class="track">${mlines()}${tl}${seg(35,21,10)}${seg(28,11,26)}${seg(10,3,42)}
+  <div class="pub" style="left:calc(${pct(d)}% - 8px);top:10px"></div>
+  <div class="lbl" style="left:calc(${pct(d)}% + 14px);top:8px">${p[0].slice(5).replace("-","/")}</div></div><div class="cc"><textarea data-i="${i}" data-k="copy" placeholder="貼上這則貼文的文案…"></textarea></div><div class="cc"><div class="drop" tabindex="0" data-i="${i}">點一下此框，再按 Ctrl/⌘+V 貼上圖片；也可以直接拖曳圖片進來</div><div class="imgs"></div><button data-upb="${i}" class="upb">上傳素材圖片</button><input type="file" accept="image/*" multiple hidden data-up="${i}"></div></div>`});
+g.innerHTML=html;
+function paint(){paintCards();
+  let done=0,next=-1;
+  P.forEach((p,i)=>{const s=st[i]||{};
+    ["w","a","p"].forEach(k=>g.querySelector(`[data-i="${i}"][data-k="${k}"]`).checked=!!s[k]);
+    const r=document.getElementById("r"+i);r.classList.toggle("done",!!s.p);r.classList.remove("next");
+    if(s.p)done++;else if(next<0)next=i});
+  if(next>=0)document.getElementById("r"+next).classList.add("next");
+  let c=0;P.forEach((p,i)=>{const s=st[i]||{};c+=(s.w?1:0)+(s.a?1:0)+(s.p?1:0)});
+  document.getElementById("pb").style.width=(c/39*100)+"%";
+  document.getElementById("st").textContent=`已發文 ${done}/13　整體進度 ${Math.round(c/39*100)}%`+(next>=0?`　下一檔：${P[next][0].replace(/-/g,"/")} ${P[next][1]}`:"　全部完成");
+}
+
+const X=[
+["介紹新品綠綠茶、上市資訊（獨家販售規格）｜商品主視覺、包裝照、主打「日式茶飲首選」","IRIS OHAYAMA 綠綠茶品項介紹|https://www.irisohyamatw.com/pages/feature-tea-ryoku"],
+["公告試飲日期、地點、參與方式｜活動主視覺、活動資訊、門市照片","活動資訊頁／指定門市資訊"],
+["分享活動照片、消費者體驗與商品特色｜活動花絮、試飲照片、商品亮點","門市資訊"],
+["居家、辦公、休息時的飲用情境｜生活情境照、日常飲用文案","門市資訊"],
+["茶飲風味、規格、包裝資訊｜商品細節圖、特色 banner、常見問題","IRIS OHAYAMA 綠綠茶品項介紹|https://www.irisohyamatw.com/pages/feature-tea-ryoku"],
+["搭配茶飲的日常情境與餐食｜茶飲搭配、餐食情境、互動式文案","IRIS OHAYAMA 綠綠茶品項介紹|https://www.irisohyamatw.com/pages/feature-tea-ryoku"],
+["結合萬家福年中檔期優惠與商品推薦｜檔期主視覺、優惠資訊、商品圖","門市資訊"],
+["夏日、冰飲、清爽飲用情境｜冰飲情境照、夏季主視覺、清爽文案","愛飲季活動頁"],
+["商品規格、飲用與保存方式｜Q&A banner、商品資訊整理","門市資訊"],
+["家庭聚會、烤肉、餐食搭配｜中秋情境照、茶飲搭餐圖、節慶文案","門市資訊"],
+["回顧商品特色與日常飲用情境｜商品主視覺、特色整理 banner","門市資訊"],
+["雙 11 優惠與購買誘因｜檔期優惠圖、商品推薦圖、促購文案","門市資訊"],
+["年度商品亮點搭配冬季與年末情境｜年度回顧圖、商品特色整理、年末推薦文案","門市資訊"]];
+const cards=document.getElementById("cards");
+P.forEach((p,i)=>{document.querySelector("#r"+i+" .info").title="規劃方向："+X[i][0]+"｜CTA："+X[i][1].split("|")[0]});
+cards.innerHTML=P.map((p,i)=>{const [t,u]=X[i][1].split("|");
+ return `<section class="card" id="c${i}"><h3>${p[0].replace(/-/g,"/")} ${p[1]}</h3><div class="meta">規劃方向：${X[i][0]}</div>
+ <div class="two"><div><label>文案</label><textarea data-i="${i}" data-k="copy" placeholder="貼上這則貼文的文案…"></textarea></div>
+ <div><label>素材（雲端連結或說明）</label><textarea data-i="${i}" data-k="mat" placeholder="貼上素材連結、尺寸或說明…"></textarea>
+ <div class="imgs"></div><button data-upb="${i}" class="upb">上傳素材圖片</button><input type="file" accept="image/*" multiple hidden data-up="${i}"></div></div>
+ <div class="meta cta">CTA：${u?`<a href="${u}" target="_blank" rel="noopener">${t}</a>`:t}</div></section>`}).join("");
+function paintCards(){
+ P.forEach((p,i)=>{
+   const v=st[i]||{},r=document.getElementById("r"+i),c=document.getElementById("c"+i);
+   if(!r||!c)return;
+   for(const root of [r,c]){
+     root.querySelectorAll("textarea").forEach(t=>{const value=v[t.dataset.k]||"";if(document.activeElement!==t&&t.value!==value)t.value=value;t.disabled=!canW});
+     root.querySelectorAll(".imgs").forEach(container=>{
+       container.replaceChildren();
+       for(const item of (v.imgs||[])){
+         const path=imgPath(item);if(!path)continue;
+         const span=document.createElement("span");span.className="th";
+         const a=document.createElement("a");a.href=imageUrl(path);a.target="_blank";a.rel="noopener noreferrer";
+         const img=document.createElement("img");img.src=imageUrl(path);img.alt="素材圖片";img.loading="lazy";a.appendChild(img);span.appendChild(a);
+         if(canW){const del=document.createElement("button");del.className="x";del.textContent="×";del.title="移除圖片";del.dataset.del=i+"|"+path;span.appendChild(del)}
+         container.appendChild(span)
+       }
+     });
+     root.querySelectorAll(".upb").forEach(b=>b.hidden=!canW);
+     root.querySelectorAll(".drop").forEach(d=>{d.classList.toggle("locked",!canW);d.tabIndex=canW?0:-1});
+   }
+   const m=r.querySelector(".meta");let x=m.querySelector(".ct");if(!x){x=document.createElement("span");x.className="ct";m.appendChild(x)}
+   x.innerHTML=` ｜<a href="#c${i}">文案${v.copy?"✔":"○"} 素材${(v.imgs||[]).length?"✔":"○"}</a>`;
+ });
+ g.querySelectorAll("input[type=checkbox]").forEach(x=>x.disabled=!canW);
+}
+function updateField(i,k,value){if(!canW)return;const v=st[i]=st[i]||{};v[k]=value;save(i,{[k]:value});paint()}
+g.addEventListener("change",e=>{const t=e.target;if(t.type==="checkbox"&&canW)updateField(t.dataset.i,t.dataset.k,t.checked)});
+document.addEventListener("input",e=>{const t=e.target;if(t.matches("textarea[data-i][data-k]")&&canW){const i=t.dataset.i,k=t.dataset.k;st[i]=st[i]||{};st[i][k]=t.value;save(i,{[k]:t.value});paintCards()}});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-upb]");if(b&&canW){const root=b.closest(".row,.card");root?.querySelector(`[data-up="${b.dataset.upb}"]`)?.click()}});
+document.addEventListener("change",async e=>{const f=e.target;if(!f.matches("input[data-up]"))return;await addFiles(f.dataset.up,f.files);f.value=""});
+async function addFiles(i,files){
+ if(!canW){flash("請先以授權編輯者登入");return}
+ const fs=[...files].filter(f=>f.type.startsWith("image/"));if(!fs.length){flash("請選擇圖片檔案");return}
+ for(const f of fs){
+   if(f.size>5*1024*1024){flash("圖片超過 5 MB："+f.name);continue}
+   const ext=(f.name.split(".").pop()||"png").toLowerCase().replace(/[^a-z0-9]/g,"")||"png";
+   const path=`posts/${Number(i)}/${crypto.randomUUID()}.${ext}`;
+   const {error}=await sb.storage.from(BUCKET).upload(path,f,{contentType:f.type,upsert:false});
+   if(error){flash("上傳失敗："+errText(error));continue}
+   const {data:current,error:readErr}=await sb.from("posts").select("imgs").eq("id",Number(i)).single();
+   if(readErr){flash("讀取圖片清單失敗："+errText(readErr));continue}
+   const imgs=[...(Array.isArray(current.imgs)?current.imgs:[]),path];
+   const {data:updated,error:writeErr}=await sb.from("posts").update({imgs}).eq("id",Number(i)).select("id");
+   if(writeErr||!updated?.length){flash("圖片已上傳，但更新貼文失敗，請聯絡管理員");continue}
+   st[i]=st[i]||{};st[i].imgs=imgs;paint();flash("圖片已上傳")
+ }
+}
+const dz=e=>e.target.closest?.(".drop");
+g.addEventListener("paste",e=>{const d=dz(e);if(!d||!canW)return;const files=[...(e.clipboardData?.files||[])];if(files.length){e.preventDefault();addFiles(d.dataset.i,files)}});
+g.addEventListener("dragover",e=>{if(dz(e)&&canW)e.preventDefault()});
+g.addEventListener("drop",e=>{const d=dz(e);if(!d||!canW)return;e.preventDefault();addFiles(d.dataset.i,e.dataTransfer.files)});
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-del]");if(!b||!canW)return;
+ const sep=b.dataset.del.indexOf("|");const i=Number(b.dataset.del.slice(0,sep)),path=b.dataset.del.slice(sep+1);
+ if(!confirm("確定移除這張圖片嗎？"))return;
+ const {data,error}=await sb.from("posts").select("imgs").eq("id",i).single();
+ if(error){flash("讀取失敗："+errText(error));return}
+ const imgs=(data.imgs||[]).filter(item=>imgPath(item)!==path);
+ const result=await sb.from("posts").update({imgs}).eq("id",i).select("id");
+ if(result.error||!result.data?.length){flash("無法更新圖片清單");return}
+ st[i]=st[i]||{};st[i].imgs=imgs;paint();
+ const removed=await sb.storage.from(BUCKET).remove([path]);
+ if(removed.error)flash("已從貼文移除，但雲端檔案刪除失敗");else flash("圖片已刪除")
+});
+async function loadPosts(){
+ const {data,error}=await sb.from("posts").select("id,w,a,p,copy,mat,imgs").order("id");
+ if(error){ready=false;canW=false;setStatus("讀取失敗，請檢查 posts API 權限及 RLS");flash(errText(error));paint();return}
+ st={};for(const r of data||[]){if(r.id>=0&&r.id<=12)st[r.id]=rowToState(r)}
+ ready=true;paint();
+ if(data.length!==13)flash(`目前讀取 ${data.length} 筆，預期 13 筆（ID 0–12）`)
+}
+async function refreshAuth(){
+ const {data:{user},error}=await sb.auth.getUser();sessionUser=error?null:user;
+ let authorized=false;
+ if(sessionUser){
+   const res=await sb.from("editors").select("user_id").eq("user_id",sessionUser.id).maybeSingle();
+   if(res.error)flash("檢查編輯權限失敗："+errText(res.error));
+   authorized=!!res.data;
+ }
+ canW=!!sessionUser&&authorized&&ready;
+ document.getElementById("showLogin").hidden=!!sessionUser;
+ document.getElementById("logout").hidden=!sessionUser;
+ setStatus(!ready?"資料庫尚未就緒":!sessionUser?"公開唯讀｜登入後可申請編輯權限":authorized?"已登入：授權編輯者（"+sessionUser.email+"）":"已登入：未列入 editors，唯讀（"+sessionUser.email+"）");
+ paint();
+}
+function showReset(){document.getElementById("resetPanel").hidden=false;document.getElementById("loginPanel").hidden=true}
+function cleanAuthUrl(){if(location.hash||location.search.includes("code=")){history.replaceState(null,"",location.pathname)}}
+async function init(){
+ if(!window.supabase?.createClient){setStatus("Supabase 函式庫載入失敗，請檢查網路");paint();return}
+ sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ const params=new URLSearchParams(location.hash.slice(1));
+ const recovery=params.get("type")==="recovery"||new URLSearchParams(location.search).get("type")==="recovery";
+ const invite=params.get("type")==="invite";
+ if(recovery||invite)showReset();
+ sb.auth.onAuthStateChange((event,session)=>{
+   if(event==="PASSWORD_RECOVERY"||event==="USER_UPDATED"&& !document.getElementById("resetPanel").hidden)showReset();
+   if(event==="SIGNED_IN"&&invite)showReset();
+   setTimeout(()=>refreshAuth().catch(e=>flash(errText(e))),0)
+ });
+ await loadPosts();await refreshAuth();
+ channel=sb.channel("posts-live").on("postgres_changes",{event:"*",schema:"public",table:"posts"},payload=>{
+   const r=payload.new;if(!r||!Number.isInteger(r.id)||r.id<0||r.id>12||pending.has(r.id))return;
+   st[r.id]=rowToState(r);paint();
+ }).subscribe(status=>{if(status==="CHANNEL_ERROR")flash("即時同步連線中斷，請重新整理")});
+ if(recovery||invite)showReset();
+}
+document.getElementById("showLogin").onclick=()=>document.getElementById("loginPanel").hidden=false;
+document.getElementById("closeLogin").onclick=()=>document.getElementById("loginPanel").hidden=true;
+document.getElementById("logout").onclick=async()=>{const {error}=await sb.auth.signOut();if(error)flash(errText(error));else{document.getElementById("resetPanel").hidden=true;flash("已登出")}};
+document.getElementById("loginForm").onsubmit=async e=>{
+ e.preventDefault();const email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value;
+ const {error}=await sb.auth.signInWithPassword({email,password});
+ if(error)flash("登入失敗："+errText(error));else{document.getElementById("loginPanel").hidden=true;document.getElementById("loginPassword").value="";flash("登入成功")}
+};
+document.getElementById("forgotPassword").onclick=async()=>{
+ const email=document.getElementById("loginEmail").value.trim();if(!email){flash("請先填入 Email");return}
+ const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+ flash(error?"寄送失敗："+errText(error):"如果此信箱可使用，將收到密碼設定／重設郵件")
+};
+document.getElementById("resetForm").onsubmit=async e=>{
+ e.preventDefault();const password=document.getElementById("newPassword").value,confirmPassword=document.getElementById("confirmPassword").value;
+ if(password!==confirmPassword){flash("兩次密碼不一致");return}
+ const {data:{session}}=await sb.auth.getSession();if(!session){flash("驗證連結無效或已過期，請重新申請密碼設定信");return}
+ const {error}=await sb.auth.updateUser({password});
+ if(error){flash("設定密碼失敗："+errText(error));return}
+ document.getElementById("resetPanel").hidden=true;cleanAuthUrl();flash("密碼設定成功，可以開始使用");await refreshAuth()
+};
+paint();init().catch(e=>{setStatus("連線初始化失敗");flash(errText(e))});
+</script>
+</body>
+</html>
